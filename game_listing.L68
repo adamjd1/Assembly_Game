@@ -1,0 +1,483 @@
+00001000 Starting Address
+Assembler used: EASy68K Editor/Assembler v5.16.01
+Created On: 21/09/2025 01:02:54
+
+00000000                             1  *-----------------------------------------------------------
+00000000                             2  * Written by : Adam Dowling
+00000000                             3  * Date       : 26/02/25
+00000000                             4  * Description: Assembly game with the theme of small world. Follows a bird trying to find its flock
+00000000                             5  * Known Bugs : Won't exit program when health goes to 0
+00000000                             6  *              At prey choice, health goes too high   
+00000000                             7  *              Loose too much health in hard mode         
+00000000                             8  *-----------------------------------------------------------
+00001000                             9      ORG $1000
+00001000                            10  
+00001000  =00000000                 11  EXIT            EQU 0           ; 0 = exit
+00001000  =00000001                 12  EASY_MODE       EQU 1           ; 1 = easy 
+00001000  =00000002                 13  HARD_MODE       EQU 2           ; 2 =hard
+00001000  =00000064                 14  HEALTH_EASY     EQU 100         ; Health in easy mode
+00001000  =00000032                 15  HEALTH_HARD     EQU 50          ; Health in hard mode
+00001000  =0000000A                 16  BRAVERY_GAIN    EQU 10          ; Bravery points
+00001000  =00000021                 17  HEALTH_LOSS_EASY EQU 33         ; 33.4 health loss in easy mode
+00001000  =00000019                 18  HEALTH_LOSS_HARD EQU 25         ; 50 health loss in hard mode
+00001000                            19  
+00001000                            20  * MEMORY
+00001000  =00004000                 21  HEALTH          EQU $4000       ; Memory for health
+00001000  =00004001                 22  BRAVERY_POINTS  EQU $4001       ; Memory for bravery points
+00001000  =00004002                 23  MODE            EQU $4002       ; Memory for game mode
+00001000                            24  
+00001000                            25  * START OF GAME
+00001000                            26  START:
+00001000  6100 005C                 27      BSR     WELCOME        
+00001004  6100 006E                 28      BSR     SELECT_MODE         ; Select easy or hard mode
+00001008  6100 00A2                 29      BSR     INIT_GAME           ; Based on what mode will be played
+0000100C  6100 0002                 30      BSR     GAME                ; Start loop
+00001010                            31  
+00001010                            32  * GAME LOOP
+00001010                            33  GAME:
+00001010  6100 00C6                 34      BSR     STORY_INTRO     
+00001014  6100 00D8                 35      BSR     PLAYER_CHOICE_1     ; First decision
+00001018  6100 02BC                 36      BSR     UPDATE_STATUS       ; Update health and bravery points
+0000101C  6100 02CE                 37      BSR     HUD                 ; Display heads-up display
+00001020  6100 0138                 38      BSR     PLAYER_CHOICE_2     ; Second decision
+00001024  6100 02B0                 39      BSR     UPDATE_STATUS    
+00001028  6100 02C2                 40      BSR     HUD          
+0000102C  6100 0186                 41      BSR     PLAYER_CHOICE_3     ; Third decision 
+00001030  6100 02A4                 42      BSR     UPDATE_STATUS  
+00001034  6100 02B6                 43      BSR     HUD           
+00001038  6100 01DC                 44      BSR     PLAYER_CHOICE_4     ; Fourth decision
+0000103C  6100 0298                 45      BSR     UPDATE_STATUS      
+00001040  6100 02AA                 46      BSR     HUD              
+00001044  6100 022E                 47      BSR     PLAYER_CHOICE_5     ; Fifth decision
+00001048  6100 028C                 48      BSR     UPDATE_STATUS    
+0000104C  6100 029E                 49      BSR     HUD           
+00001050  6100 02F4                 50      BSR     CHECK_GAME_OVER 
+00001054  6100 0336                 51      BSR     REPLAY              ; Ask to replay or exit
+00001058  4E75                      52      RTS                         ; Return
+0000105A                            53  END:
+0000105A  FFFF FFFF                 54      SIMHALT        
+0000105E                            55  
+0000105E                            56  * WELCOME SUBROUTINE
+0000105E                            57  WELCOME:
+0000105E  6100 0354                 58      BSR     ENDL                ; Print a new line
+00001062  43F9 000013C5             59      LEA     WELCOME_MSG,A1      ; Load welcome message in address register A1
+00001068  103C 000E                 60      MOVE.B  #14,D0    
+0000106C  4E4F                      61      TRAP    #15                 ; Print the message
+0000106E  6100 0344                 62      BSR     ENDL             
+00001072  4E75                      63      RTS                         ; Return
+00001074                            64  
+00001074                            65  SELECT_MODE:
+00001074  6100 033E                 66      BSR     ENDL             
+00001078  43F9 000014C6             67      LEA     MODE_MSG,A1         ; Load MODE_MSG into address register A1
+0000107E  103C 000E                 68      MOVE.B  #14,D0  
+00001082  4E4F                      69      TRAP    #15                 ; Print the message
+00001084  103C 0004                 70      MOVE.B  #4,D0               ; Set trap for input
+00001088  4E4F                      71      TRAP    #15         
+0000108A  B23C 0001                 72      CMP.B   #EASY_MODE,D1       ; Check if game is easy
+0000108E  6700 000C                 73      BEQ     SET_EASY            ; If yes -> Easy Mode
+00001092  B23C 0002                 74      CMP.B   #HARD_MODE,D1    
+00001096  6700 000C                 75      BEQ     SET_HARD            ; If yes -> Hard Mode
+0000109A  60D8                      76      BRA     SELECT_MODE         ; Wrong input
+0000109C                            77  
+0000109C                            78  SET_EASY:
+0000109C  11FC 0001 4002            79      MOVE.B  #EASY_MODE,MODE     ; Set mode to easy
+000010A2  4E75                      80      RTS                   
+000010A4                            81  
+000010A4                            82  SET_HARD:
+000010A4  11FC 0002 4002            83      MOVE.B  #HARD_MODE,MODE     ; Set mode to hard
+000010AA  4E75                      84      RTS                  
+000010AC                            85  
+000010AC                            86  INIT_GAME:
+000010AC  0C38 0001 4002            87      CMP.B   #EASY_MODE,MODE     ; Check if easy
+000010B2  6700 000C                 88      BEQ     INIT_EASY           ; Start easy
+000010B6  0C38 0002 4002            89      CMP.B   #HARD_MODE,MODE    
+000010BC  6700 000E                 90      BEQ     INIT_HARD       
+000010C0                            91  
+000010C0                            92  INIT_EASY:
+000010C0  11FC 0064 4000            93      MOVE.B  #HEALTH_EASY,HEALTH ; Health for easy mode
+000010C6  4238 4001                 94      CLR.B   BRAVERY_POINTS      ; Bravery points = 0
+000010CA  4E75                      95      RTS                         ; Return
+000010CC                            96  
+000010CC                            97  INIT_HARD:
+000010CC  11FC 0032 4000            98      MOVE.B  #HEALTH_HARD,HEALTH ; Health for hard mode
+000010D2  4238 4001                 99      CLR.B   BRAVERY_POINTS      ; Bravery points = 0
+000010D6  4E75                     100      RTS                         ; Return
+000010D8                           101  
+000010D8                           102  STORY_INTRO:
+000010D8  6100 02DA                103      BSR     ENDL          
+000010DC  43F9 000014EA            104      LEA     STORY_MSG,A1        ; Load story intro message inro Address register A1
+000010E2  103C 000E                105      MOVE.B  #14,D0           
+000010E6  4E4F                     106      TRAP    #15           
+000010E8  6100 02CA                107      BSR     ENDL           
+000010EC  4E75                     108      RTS                         ; Return
+000010EE                           109  
+000010EE                           110  PLAYER_CHOICE_1:
+000010EE  6100 02C4                111      BSR     ENDL            
+000010F2  43F9 0000151E            112      LEA     CHOICE_MSG1,A1      ; Load first choice message
+000010F8  103C 000E                113      MOVE.B  #14,D0          
+000010FC  4E4F                     114      TRAP    #15            
+000010FE  103C 0004                115      MOVE.B  #4,D0             
+00001102  4E4F                     116      TRAP    #15        
+00001104  B23C 0001                117      CMP.B   #1,D1               ; Check if player chose option 1
+00001108  6700 000C                118      BEQ     FOLLOW_NOISE        ; If yes
+0000110C  B23C 0002                119      CMP.B   #2,D1               ; Check if player chose option 2
+00001110  6700 0036                120      BEQ     KEEP_FLYING         ; If yes
+00001114  60D8                     121      BRA     PLAYER_CHOICE_1     ; If invalid input, ask again
+00001116                           122  
+00001116                           123  FOLLOW_NOISE:
+00001116  6100 029C                124      BSR     ENDL             
+0000111A  43F9 00001542            125      LEA     NOISE_MSG,A1        ; Load MESSAGE
+00001120  103C 000E                126      MOVE.B  #14,D0          
+00001124  4E4F                     127      TRAP    #15                 ; Print the message
+00001126  0C38 0001 4002           128      CMP.B   #EASY_MODE,MODE     ; Check if easy mode
+0000112C  6700 000C                129      BEQ     LOSE_HEALTH_EASY    ; If yes, lose 33 health
+00001130  0438 0019 4000           130      SUB.B   #HEALTH_LOSS_HARD,HEALTH ; Else, lose 50 health
+00001136  6000 0008                131      BRA     GAIN_BRAVERY        ; Jump to gain bravery points
+0000113A                           132  LOSE_HEALTH_EASY:
+0000113A  0438 0021 4000           133      SUB.B   #HEALTH_LOSS_EASY,HEALTH ; Lose 33 health
+00001140                           134  GAIN_BRAVERY:
+00001140  0638 000A 4001           135      ADD.B   #BRAVERY_GAIN,BRAVERY_POINTS ; Gain 10 bravery points
+00001146  4E75                     136      RTS                         ; Return
+00001148                           137  
+00001148                           138  KEEP_FLYING:
+00001148  6100 026A                139      BSR     ENDL             
+0000114C  43F9 00001587            140      LEA     FLY_MSG,A1          ; Load message
+00001152  103C 000E                141      MOVE.B  #14,D0         
+00001156  4E4F                     142      TRAP    #15         
+00001158  4E75                     143      RTS                         ; Return
+0000115A                           144  
+0000115A                           145  PLAYER_CHOICE_2:
+0000115A  6100 0258                146      BSR     ENDL               
+0000115E  43F9 000015B9            147      LEA     CHOICE_MSG2,A1      ; Load second message
+00001164  103C 000E                148      MOVE.B  #14,D0      
+00001168  4E4F                     149      TRAP    #15            
+0000116A  103C 0004                150      MOVE.B  #4,D0               ; Set trap for input
+0000116E  4E4F                     151      TRAP    #15          
+00001170  B23C 0001                152      CMP.B   #1,D1               ; Check option 1
+00001174  6700 000C                153      BEQ     EXPLORE_CAVE        ; If yes
+00001178  B23C 0002                154      CMP.B   #2,D1               ; Check option 2 
+0000117C  6700 0024                155      BEQ     AVOID_CAVE          ; If yes
+00001180  60D8                     156      BRA     PLAYER_CHOICE_2     ; If invalid input, ask again
+00001182                           157  
+00001182                           158  EXPLORE_CAVE:
+00001182  6100 0230                159      BSR     ENDL           
+00001186  43F9 000015E0            160      LEA     EXPLORE_CAVE_MSG,A1 ; Load message
+0000118C  103C 000E                161      MOVE.B  #14,D0           
+00001190  4E4F                     162      TRAP    #15               
+00001192  0C38 0001 4002           163      CMP.B   #EASY_MODE,MODE     ; Check if easy
+00001198  67A0                     164      BEQ     LOSE_HEALTH_EASY    ; If yes
+0000119A  0438 0019 4000           165      SUB.B   #HEALTH_LOSS_HARD,HEALTH ; Else
+000011A0  609E                     166      BRA     GAIN_BRAVERY        ; Jump to gain bravery points
+000011A2                           167  
+000011A2                           168  AVOID_CAVE:
+000011A2  6100 0210                169      BSR     ENDL              
+000011A6  43F9 00001639            170      LEA     AVOID_CAVE_MSG,A1   ; Load message
+000011AC  103C 000E                171      MOVE.B  #14,D0             
+000011B0  4E4F                     172      TRAP    #15               
+000011B2  4E75                     173      RTS                         ; Return
+000011B4                           174  
+000011B4                           175  PLAYER_CHOICE_3:
+000011B4  6100 01FE                176      BSR     ENDL             
+000011B8  43F9 0000165F            177      LEA     CHOICE_MSG3,A1      ; Load message
+000011BE  103C 000E                178      MOVE.B  #14,D0          
+000011C2  4E4F                     179      TRAP    #15           
+000011C4  103C 0004                180      MOVE.B  #4,D0          
+000011C8  4E4F                     181      TRAP    #15                 ; Get input
+000011CA  B23C 0001                182      CMP.B   #1,D1               ; Check if option 1
+000011CE  6700 000C                183      BEQ     DRINK_WATER         ; If yes
+000011D2  B23C 0002                184      CMP.B   #2,D1               ; Check if option 2
+000011D6  6700 001C                185      BEQ     IGNORE_WATER        ; If yes
+000011DA  60D8                     186      BRA     PLAYER_CHOICE_3     ; Ask again if wrong input
+000011DC                           187  
+000011DC                           188  DRINK_WATER:
+000011DC  6100 01D6                189      BSR     ENDL             
+000011E0  43F9 00001692            190      LEA     DRINK_WATER_MSG,A1  ; Load message
+000011E6  103C 000E                191      MOVE.B  #14,D0         
+000011EA  4E4F                     192      TRAP    #15           
+000011EC  0638 0014 4000           193      ADD.B   #20,HEALTH          ; Gain 20 health
+000011F2  4E75                     194      RTS                         ; Return
+000011F4                           195  
+000011F4                           196  IGNORE_WATER:
+000011F4  6100 01BE                197      BSR     ENDL            
+000011F8  43F9 000016BA            198      LEA     IGNORE_WATER_MSG,A1 ; Load message
+000011FE  103C 000E                199      MOVE.B  #14,D0          
+00001202  4E4F                     200      TRAP    #15            
+00001204  0C38 0001 4002           201      CMP.B   #EASY_MODE,MODE    
+0000120A  6700 FF2E                202      BEQ     LOSE_HEALTH_EASY   
+0000120E  0438 0019 4000           203      SUB.B   #HEALTH_LOSS_HARD,HEALTH 
+00001214  4E75                     204      RTS                         ; Return
+00001216                           205  
+00001216                           206  PLAYER_CHOICE_4:
+00001216  6100 019C                207      BSR     ENDL                ; Print a new line
+0000121A  43F9 000016E6            208      LEA     CHOICE_MSG4,A1      ; Load message
+00001220  103C 000E                209      MOVE.B  #14,D0            
+00001224  4E4F                     210      TRAP    #15            
+00001226  103C 0004                211      MOVE.B  #4,D0           
+0000122A  4E4F                     212      TRAP    #15             
+0000122C  B23C 0001                213      CMP.B   #1,D1               ; Check if option 1 
+00001230  6700 000C                214      BEQ     CHASE_PREY          ; If yes
+00001234  B23C 0002                215      CMP.B   #2,D1               ; Check if option 2
+00001238  6700 0028                216      BEQ     IGNORE_PREY         ; If yes
+0000123C  60D8                     217      BRA     PLAYER_CHOICE_4     ; Ask again
+0000123E                           218  
+0000123E                           219  CHASE_PREY:
+0000123E  6100 0174                220      BSR     ENDL              
+00001242  43F9 0000170C            221      LEA     CHASE_PREY_MSG,A1   ; Load message
+00001248  103C 000E                222      MOVE.B  #14,D0          
+0000124C  4E4F                     223      TRAP    #15            
+0000124E  0C38 0001 4002           224      CMP.B   #EASY_MODE,MODE     ; Check if easy
+00001254  6700 FEE4                225      BEQ     LOSE_HEALTH_EASY    ; If yes, lose 33 health (doesnt work)
+00001258  0438 0019 4000           226      SUB.B   #HEALTH_LOSS_HARD,HEALTH ; Else, lose 50 health (doesnt work)
+0000125E  6000 FEE0                227      BRA     GAIN_BRAVERY        ; Jump to bravery points
+00001262                           228  
+00001262                           229  IGNORE_PREY:
+00001262  6100 0150                230      BSR     ENDL              
+00001266  43F9 0000173E            231      LEA     IGNORE_PREY_MSG,A1  ; Load message
+0000126C  103C 000E                232      MOVE.B  #14,D0             
+00001270  4E4F                     233      TRAP    #15          
+00001272  4E75                     234      RTS                         ; Return
+00001274                           235  
+00001274                           236  PLAYER_CHOICE_5:
+00001274  6100 013E                237      BSR     ENDL            
+00001278  43F9 00001764            238      LEA     CHOICE_MSG5,A1      ; Load fifth message
+0000127E  103C 000E                239      MOVE.B  #14,D0            
+00001282  4E4F                     240      TRAP    #15            
+00001284  103C 0004                241      MOVE.B  #4,D0        
+00001288  4E4F                     242      TRAP    #15                 ; Get user input
+0000128A  B23C 0001                243      CMP.B   #1,D1               ; Check if option 1 
+0000128E  6700 000C                244      BEQ     FOLLOW_FLOCK        ; If yes
+00001292  B23C 0002                245      CMP.B   #2,D1               ; Check if option 2 
+00001296  6700 001C                246      BEQ     IGNORE_FLOCK        ; If yes
+0000129A  60D8                     247      BRA     PLAYER_CHOICE_5   
+0000129C                           248  
+0000129C                           249  FOLLOW_FLOCK:
+0000129C  6100 0116                250      BSR     ENDL            
+000012A0  43F9 00001797            251      LEA     FOLLOW_FLOCK_MSG,A1 ; Load message
+000012A6  103C 000E                252      MOVE.B  #14,D0          
+000012AA  4E4F                     253      TRAP    #15                 
+000012AC  0638 0019 4001           254      ADD.B   #25,BRAVERY_POINTS  ; Gain 25 bravery points
+000012B2  4E75                     255      RTS                         ; Return
+000012B4                           256  
+000012B4                           257  IGNORE_FLOCK:
+000012B4  6100 00FE                258      BSR     ENDL            
+000012B8  43F9 000017D1            259      LEA     IGNORE_FLOCK_MSG,A1 ; Load message
+000012BE  103C 000E                260      MOVE.B  #14,D0        
+000012C2  4E4F                     261      TRAP    #15             
+000012C4  0C38 0001 4002           262      CMP.B   #EASY_MODE,MODE     ; Check if easy
+000012CA  6700 FE6E                263      BEQ     LOSE_HEALTH_EASY    ; If yes, lose 33
+000012CE  0438 0019 4000           264      SUB.B   #HEALTH_LOSS_HARD,HEALTH ; Else, lose 50
+000012D4  4E75                     265      RTS                         ; Return
+000012D6                           266  
+000012D6                           267  UPDATE_STATUS:
+000012D6  6100 00DC                268      BSR     ENDL            
+000012DA  43F9 00001802            269      LEA     STATUS_MSG,A1       ; Load message
+000012E0  103C 000E                270      MOVE.B  #14,D0         
+000012E4  4E4F                     271      TRAP    #15             
+000012E6  6100 00CC                272      BSR     ENDL        
+000012EA  4E75                     273      RTS                         ; Return
+000012EC                           274  
+000012EC                           275  * HEADS-UP DISPLAY
+000012EC                           276  HUD:
+000012EC  6100 00C6                277      BSR     ENDL          
+000012F0  43F9 0000181A            278      LEA     HUD_HEADER,A1       ; Load HUD message
+000012F6  103C 000E                279      MOVE.B  #14,D0         
+000012FA  4E4F                     280      TRAP    #15            
+000012FC  6100 00B6                281      BSR     ENDL            
+00001300  43F9 00001829            282      LEA     DASHES,A1           ; Load dashes into address register A1
+00001306  103C 000E                283      MOVE.B  #14,D0              ; Set trap for printing
+0000130A  4E4F                     284      TRAP    #15         
+0000130C  6100 00A6                285      BSR     ENDL        
+00001310                           286  
+00001310                           287      * PRINT HEALTH
+00001310  43F9 0000183E            288      LEA     HEALTH_MSG,A1       ; Load message
+00001316  103C 000E                289      MOVE.B  #14,D0     
+0000131A  4E4F                     290      TRAP    #15            
+0000131C  1238 4000                291      MOVE.B  HEALTH,D1           ; Load health into data register D1
+00001320  103C 0003                292      MOVE.B  #3,D0          
+00001324  4E4F                     293      TRAP    #15            
+00001326  6100 008C                294      BSR     ENDL             
+0000132A                           295  
+0000132A  43F9 00001847            296      LEA     BRAVERY_MSG,A1      ; Load message
+00001330  103C 000E                297      MOVE.B  #14,D0          
+00001334  4E4F                     298      TRAP    #15              
+00001336  1238 4001                299      MOVE.B  BRAVERY_POINTS,D1   ; Load bravery points into data register D1
+0000133A  103C 0003                300      MOVE.B  #3,D0           
+0000133E  4E4F                     301      TRAP    #15          
+00001340  6100 0072                302      BSR     ENDL          
+00001344                           303  
+00001344  4E75                     304      RTS                         ; Return
+00001346                           305  
+00001346                           306  
+00001346                           307  CHECK_GAME_OVER:
+00001346  0C38 0000 4000           308      CMP.B   #0,HEALTH           ; Check if health is 0 or below
+0000134C  6F00 000E                309      BLE     GAME_OVER           ; If yes, branch to game over
+00001350                           310  
+00001350  0C38 0032 4001           311      CMP.B   #50,BRAVERY_POINTS  ; Check if bravery points >= 50
+00001356  6C00 001C                312      BGE     WIN_GAME            ; If yes, branch to win game
+0000135A                           313  
+0000135A  4E75                     314      RTS                         ; Return if neither
+0000135C                           315  
+0000135C                           316  GAME_OVER:
+0000135C  6100 0056                317      BSR     ENDL            
+00001360  43F9 00001886            318      LEA     GAME_OVER_MSG,A1    ; Load message
+00001366  103C 000E                319      MOVE.B  #14,D0        
+0000136A  4E4F                     320      TRAP    #15            
+0000136C  6100 0046                321      BSR     ENDL           
+00001370  6000 001A                322      BRA     REPLAY              ; Ask to replay or exit
+00001374                           323  
+00001374                           324  WIN_GAME: ;(Doesnt work)
+00001374  6100 003E                325      BSR     ENDL             
+00001378  43F9 000018B2            326      LEA     WIN_MSG,A1        
+0000137E  103C 000E                327      MOVE.B  #14,D0         
+00001382  4E4F                     328      TRAP    #15               
+00001384  6100 002E                329      BSR     ENDL             
+00001388  6000 0002                330      BRA     REPLAY              ; Ask to replay
+0000138C                           331  
+0000138C                           332  REPLAY:
+0000138C  6100 0026                333      BSR     ENDL               
+00001390  43F9 00001858            334      LEA     REPLAY_MSG,A1      
+00001396  103C 000E                335      MOVE.B  #14,D0           
+0000139A  4E4F                     336      TRAP    #15             
+0000139C  103C 0004                337      MOVE.B  #4,D0            
+000013A0  4E4F                     338      TRAP    #15              
+000013A2  B27C 0000                339      CMP     #EXIT,D1            ; Check if user wants to exit
+000013A6  6700 FCB2                340      BEQ     END                 ; If yes, end the game
+000013AA  6100 FD00                341      BSR     INIT_GAME     
+000013AE  6100 FC60                342      BSR     GAME                ; Restart the game
+000013B2  4E75                     343      RTS                         ; Return
+000013B4                           344  
+000013B4                           345  * PRINT NEW LINE
+000013B4                           346  ENDL:
+000013B4  103C 000E                347      MOVE.B  #14,D0       
+000013B8  43F9 000013C2            348      LEA     NEWA,A1             ; Load new line ($0D, $0A)
+000013BE  4E4F                     349      TRAP    #15                 ; Print new line
+000013C0  4E75                     350      RTS                         ; Return
+000013C2                           351      
+000013C2= 0D 0A 00                 352  NEWA:           DC.B    $0D,$0A,0
+000013C5= 2D 2D 2D 2D 2D 2D ...    353  WELCOME_MSG:    DC.B    '------------------------------------------------------------'
+00001401= 0D 0A                    354                  DC.B    $0D,$0A
+00001403= 57 45 4C 43 4F 4D ...    355                  DC.B    'WELCOME TO AVIARY ODYSSEY!'
+0000141D= 0D 0A                    356                  DC.B    $0D,$0A
+0000141F= 59 4F 55 20 41 52 ...    357                  DC.B    'YOU ARE A BIRD IN A SMALL WORLD'
+0000143E= 0D 0A                    358                  DC.B    $0D,$0A
+00001440= 4F 4E 20 41 20 42 ...    359                  DC.B    'ON A BIG ADVENTURE'
+00001452= 0D 0A                    360                  DC.B    $0D,$0A
+00001454= 59 4F 55 20 41 52 ...    361                  DC.B    'YOU ARE LOST FROM THE FLOCK!'
+00001470= 0D 0A                    362                  DC.B    $0D,$0A
+00001472= 46 49 4E 44 20 59 ...    363                  DC.B    'FIND YOUR WAY BACK!'
+00001485= 0D 0A                    364                  DC.B    $0D,$0A
+00001487= 2D 2D 2D 2D 2D 2D ...    365                  DC.B    '------------------------------------------------------------'
+000014C3= 0D 0A 00                 366                  DC.B    $0D,$0A,0
+000014C6= 53 45 4C 45 43 54 ...    367  MODE_MSG:       DC.B    'SELECT MODE: 1 (EASY) OR 2 (HARD): ',0
+000014EA= 59 4F 55 20 48 45 ...    368  STORY_MSG:      DC.B    'YOU HEAR A NOISE FROM THE FOREST. WHAT WILL YOU DO?',0
+0000151E= 31 2E 20 46 4F 4C ...    369  CHOICE_MSG1:    DC.B    '1. FOLLOW THE NOISE', $0D, $0A  
+00001533= 32 2E 20 4B 45 45 ...    370                  DC.B    '2. KEEP FLYING', 0        
+00001542= 59 4F 55 20 46 4C ...    371  NOISE_MSG:      DC.B    'YOU FLEW INTO A TREE! LOST SOME HEALTH BUT GAINED 10 BRAVERY POINTS.',0
+00001587= 59 4F 55 20 4B 45 ...    372  FLY_MSG:        DC.B    'YOU KEPT FLYING. NO CHANGES TO HEALTH OR BRAVERY.',0
+000015B9= 31 2E 20 45 58 50 ...    373  CHOICE_MSG2:    DC.B    '1. EXPLORE THE CAVE', $0D, $0A 
+000015CE= 32 2E 20 41 56 4F ...    374                  DC.B    '2. AVOID THE CAVE', 0           
+000015E0= 59 4F 55 20 45 58 ...    375  EXPLORE_CAVE_MSG: DC.B  'YOU EXPLORED THE CAVE AND FOUND TREASURE! LOST SOME HEALTH BUT GAINED 10 BRAVERY POINTS.',0
+00001639= 59 4F 55 20 41 56 ...    376  AVOID_CAVE_MSG: DC.B    'YOU AVOIDED THE CAVE AND STAYED SAFE.',0
+0000165F= 31 2E 20 44 52 49 ...    377  CHOICE_MSG3:    DC.B    '1. DRINK WATER FROM THE RIVER', $0D, $0A  
+0000167E= 32 2E 20 49 47 4E ...    378                  DC.B    '2. IGNORE THE WATER', 0                   
+00001692= 59 4F 55 20 44 52 ...    379  DRINK_WATER_MSG: DC.B   'YOU DRANK WATER AND REGAINED 20 HEALTH.',0
+000016BA= 59 4F 55 20 49 47 ...    380  IGNORE_WATER_MSG: DC.B  'YOU IGNORED THE WATER AND LOST SOME HEALTH.',0
+000016E6= 31 2E 20 43 48 41 ...    381  CHOICE_MSG4:    DC.B    '1. CHASE THE PREY', $0D, $0A  
+000016F9= 32 2E 20 49 47 4E ...    382                  DC.B    '2. IGNORE THE PREY', 0      
+0000170C= 59 4F 55 20 43 48 ...    383  CHASE_PREY_MSG: DC.B    'YOU CHASED THE PREY AND GAINED 10 BRAVERY POINTS!',0
+0000173E= 59 4F 55 20 49 47 ...    384  IGNORE_PREY_MSG: DC.B   'YOU IGNORED THE PREY AND STAYED SAFE.',0
+00001764= 31 2E 20 46 4F 4C ...    385  CHOICE_MSG5:    DC.B    '1. FOLLOW THE FLOCK CALL', $0D, $0A  
+0000177E= 32 2E 20 49 47 4E ...    386                  DC.B    '2. IGNORE THE FLOCK CALL', 0     
+00001797= 59 4F 55 20 46 4F ...    387  FOLLOW_FLOCK_MSG: DC.B  'YOU FOLLOWED THE FLOCK CALL AND GAINED 25 BRAVERY POINTS!',0
+000017D1= 59 4F 55 20 49 47 ...    388  IGNORE_FLOCK_MSG: DC.B  'YOU IGNORED THE FLOCK CALL AND LOST SOME HEALTH.',0
+00001802= 55 50 44 41 54 49 ...    389  STATUS_MSG:     DC.B    'UPDATING YOUR STATUS...',0
+0000181A= 43 75 72 72 65 6E ...    390  HUD_HEADER:     DC.B    'Current Status',0
+00001829= 2D 2D 2D 2D 2D 2D ...    391  DASHES:         DC.B    '--------------------',0
+0000183E= 48 65 61 6C 74 68 ...    392  HEALTH_MSG:     DC.B    'Health: ',0
+00001847= 42 72 61 76 65 72 ...    393  BRAVERY_MSG:    DC.B    'Bravery Points: ',0
+00001858= 45 4E 54 45 52 20 ...    394  REPLAY_MSG:     DC.B    'ENTER 0 TO QUIT, ANY OTHER NUMBER TO REPLAY: ',0
+00001886= 47 41 4D 45 20 4F ...    395  GAME_OVER_MSG:  DC.B    'GAME OVER! YOU DID NOT SURVIVE THE ODDYSEY.',0
+000018B2= 43 4F 4E 47 52 41 ...    396  WIN_MSG:        DC.B    'CONGRATULATIONS! YOU FOUND YOUR FLOCK AND SURVIVED!',0
+000018E6                           397  
+000018E6                           398      END START
+
+No errors detected
+No warnings generated
+
+
+SYMBOL TABLE INFORMATION
+Symbol-name         Value
+-------------------------
+AVOID_CAVE          11A2
+AVOID_CAVE_MSG      1639
+BRAVERY_GAIN        A
+BRAVERY_MSG         1847
+BRAVERY_POINTS      4001
+CHASE_PREY          123E
+CHASE_PREY_MSG      170C
+CHECK_GAME_OVER     1346
+CHOICE_MSG1         151E
+CHOICE_MSG2         15B9
+CHOICE_MSG3         165F
+CHOICE_MSG4         16E6
+CHOICE_MSG5         1764
+DASHES              1829
+DRINK_WATER         11DC
+DRINK_WATER_MSG     1692
+EASY_MODE           1
+END                 105A
+ENDL                13B4
+EXIT                0
+EXPLORE_CAVE        1182
+EXPLORE_CAVE_MSG    15E0
+FLY_MSG             1587
+FOLLOW_FLOCK        129C
+FOLLOW_FLOCK_MSG    1797
+FOLLOW_NOISE        1116
+GAIN_BRAVERY        1140
+GAME                1010
+GAME_OVER           135C
+GAME_OVER_MSG       1886
+HARD_MODE           2
+HEALTH              4000
+HEALTH_EASY         64
+HEALTH_HARD         32
+HEALTH_LOSS_EASY    21
+HEALTH_LOSS_HARD    19
+HEALTH_MSG          183E
+HUD                 12EC
+HUD_HEADER          181A
+IGNORE_FLOCK        12B4
+IGNORE_FLOCK_MSG    17D1
+IGNORE_PREY         1262
+IGNORE_PREY_MSG     173E
+IGNORE_WATER        11F4
+IGNORE_WATER_MSG    16BA
+INIT_EASY           10C0
+INIT_GAME           10AC
+INIT_HARD           10CC
+KEEP_FLYING         1148
+LOSE_HEALTH_EASY    113A
+MODE                4002
+MODE_MSG            14C6
+NEWA                13C2
+NOISE_MSG           1542
+PLAYER_CHOICE_1     10EE
+PLAYER_CHOICE_2     115A
+PLAYER_CHOICE_3     11B4
+PLAYER_CHOICE_4     1216
+PLAYER_CHOICE_5     1274
+REPLAY              138C
+REPLAY_MSG          1858
+SELECT_MODE         1074
+SET_EASY            109C
+SET_HARD            10A4
+START               1000
+STATUS_MSG          1802
+STORY_INTRO         10D8
+STORY_MSG           14EA
+UPDATE_STATUS       12D6
+WELCOME             105E
+WELCOME_MSG         13C5
+WIN_GAME            1374
+WIN_MSG             18B2
